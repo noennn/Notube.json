@@ -1,266 +1,294 @@
-/* Start spoofViewport.js */
-// Enables 4K resolution tricking youtube into thinking that we are on a 4K TV
-(function () {
-  var existing = document.querySelector('meta[name="viewport"]');
-  if (existing) {
-    existing.setAttribute(
-      "content",
-      "width=3840, height=2160, initial-scale=1.0"
-    );
-  } else {
-    var meta = document.createElement("meta");
-    meta.name = "viewport";
-    meta.content = "width=3840, height=2160, initial-scale=1.0";
-    document.head.appendChild(meta);
-  }
+/* SpoofViewport - Versión Ligera */
+(function() {
+    if (window.screen.width >= 3840 && window.screen.height >= 2160) return;
+    
+    const viewportContent = "width=3840, height=2160, initial-scale=1.0";
+    let viewport = document.querySelector('meta[name="viewport"]');
+    
+    if (viewport) {
+        viewport.content = viewportContent;
+    } else {
+        viewport = document.createElement("meta");
+        viewport.name = "viewport";
+        viewport.content = viewportContent;
+        document.head.appendChild(viewport);
+    }
 })();
-/* End spoofViewport.js */
 
-/* Start menuTrigger.js */
-(function () {
-  function getSearchBar() {
-    const searchBars = document.querySelectorAll(
-      '[idomkey="ytLrSearchBarSearchTextBox"]'
-    );
-    return searchBars[searchBars.length - 1] ?? null;
-  }
-
-  function addMenuButton() {
-    const searchBar = getSearchBar();
-    if (!searchBar) return;
-
-    const parent = searchBar.parentNode;
-    if (parent.querySelector('button[data-notubetv="menu"]')) return;
-
-    parent.style.display = "flex";
-    parent.style.flexDirection = "row";
-    parent.style.alignItems = "center";
-
-    const menuButton = document.createElement("button");
-    menuButton.setAttribute("data-notubetv", "menu");
-    menuButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" height="56px" viewBox="0 -960 960 960" width="56px" fill="#FFFFFF" fill-opacity="0.8">
-        <path d="M480-480q0-91 64.5-155.5T700-700q91 0 155.5 64.5T920-480H480ZM260-260q-91 0-155.5-64.5T40-480h440q0 91-64.5 155.5T260-260Zm220-220q-91 0-155.5-64.5T260-700q0-91 64.5-155.5T480-920v440Zm0 440v-440q91 0 155.5 64.5T700-260q0 91-64.5 155.5T480-40Z"/>
-      </svg>`;
-    menuButton.style.marginLeft = "54px";
-    menuButton.style.padding = "35px";
-    menuButton.style.background = "rgba(255, 255, 255, 0.1)";
-    menuButton.style.border = "none";
-    menuButton.style.borderRadius = "88px";
-
-    parent.insertBefore(menuButton, searchBar.nextSibling);
-  }
-
-  addMenuButton();
-
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowRight") {
-      const searchBar = getSearchBar();
-      const isFocused = searchBar?.classList?.contains(
-        "ytLrSearchTextBoxFocused"
-      );
-      if (searchBar && isFocused) {
-        modernUI();
-        const menuButton = document.querySelector(
-          'button[data-notubetv="menu"]'
-        );
-        menuButton.style.background = "white";
-      }
-    }
-  });
-
-  const observer = new MutationObserver(() => {
-    const searchBar = getSearchBar();
-    if (
-      searchBar &&
-      !searchBar.parentNode.querySelector('[data-notubetv="menu"]')
-    ) {
-      addMenuButton();
-    }
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
-})();
-/* End menuTrigger.js */
-
-/* Start exitBridge.js */
-(function () {
-  const observer = new MutationObserver(() => {
-    const exitButton = document.querySelector(
-      ".ytVirtualListItemLast ytlr-button.ytLrButtonLargeShape"
-    );
-
-    if (exitButton) {
-      exitButton.addEventListener(
-        "keydown",
-        (e) => {
-          if (
-            (e.key === "Enter" || e.keyCode === 13) &&
-            typeof ExitBridge !== "undefined" &&
-            ExitBridge.onExitCalled
-          ) {
-            e.preventDefault();
-            e.stopPropagation();
-            ExitBridge.onExitCalled();
-          }
-        },
-        true
-      );
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-})();
-/* End exitBridge.js */
-
-/* Start TizenTubeScripts.js */
-(function () {
-  "use strict";
-
-  const CONFIG_KEY = "ytaf-configuration";
-  const defaultConfig = {
-    enableAdBlock: true,
-    enableSponsorBlock: true,
-    sponsorBlockManualSkips: [],
-    enableSponsorBlockSponsor: true,
-    enableSponsorBlockIntro: true,
-    enableSponsorBlockOutro: true,
-    enableSponsorBlockInteraction: true,
-    enableSponsorBlockSelfPromo: true,
-    enableSponsorBlockMusicOfftopic: true,
-    enableShorts: true,
-  };
-
-  let localConfig;
-
-  try {
-    localConfig = JSON.parse(window.localStorage[CONFIG_KEY]);
-  } catch {
-    localConfig = defaultConfig;
-  }
-
-  window.localConfig = window.localStorage[CONFIG_KEY]
-    ? JSON.parse(window.localStorage[CONFIG_KEY])
-    : defaultConfig;
-
-  window.configRead = function (key) {
-    if (window.localConfig[key] === undefined) {
-      window.localConfig[key] = defaultConfig[key];
-    }
-    return window.localConfig[key];
-  };
-
-  window.configWrite = function (key, value) {
-    window.localConfig[key] = value;
-    window.localStorage[CONFIG_KEY] = JSON.stringify(window.localConfig);
-  };
-
-  // --- PATCH JSON.parse para no romper ---
-  const origParse = JSON.parse;
-  JSON.parse = function () {
-    const r = origParse.apply(this, arguments);
-    try {
-      if (configRead("enableAdBlock")) {
-        if (r?.adPlacements) r.adPlacements = [];
-        if (r?.playerAds) r.playerAds = false;
-        if (r?.adSlots) r.adSlots = [];
-      }
-
-      if (
-        r?.contents?.tvBrowseRenderer?.content?.tvSurfaceContentRenderer?.content
-          ?.sectionListRenderer?.contents &&
-        configRead("enableAdBlock")
-      ) {
-        const s =
-          r.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.content
-            .sectionListRenderer.contents[0];
-        s.shelfRenderer.content.horizontalListRenderer.items =
-          s.shelfRenderer.content.horizontalListRenderer.items.filter(
-            (i) => !i?.adSlotRenderer
-          );
-      }
-
-      if (
-        !configRead("enableShorts") &&
-        r?.contents?.tvBrowseRenderer?.content?.tvSurfaceContentRenderer?.content
-      ) {
-        r.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.content.sectionListRenderer.contents =
-          r.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.content.sectionListRenderer.contents.filter(
-            (shelve) =>
-              shelve.shelfRenderer?.tvhtml5ShelfRendererType !==
-              "TVHTML5_SHELF_RENDERER_TYPE_SHORTS"
-          );
-      }
-    } catch (e) {
-      return r;
-    }
-    return r;
-  };
-
-  // --- SponsorBlock handler modificado ---
-  class SponsorBlockHandler {
-    video = null;
-    active = true;
-    attachVideoTimeout = null;
-    nextSkipTimeout = null;
-    sliderInterval = null;
-    observer = null;
-    scheduleSkipHandler = null;
-    durationChangeHandler = null;
-    segments = null;
-    skippableCategories = [];
-    manualSkippableCategories = [];
-
-    constructor(videoID) {
-      this.videoID = videoID;
+/* MenuTrigger - Versión Ligera */
+(function() {
+    function getSearchBar() {
+        const searchBars = document.querySelectorAll('[idomkey="ytLrSearchBarSearchTextBox"]');
+        return searchBars[searchBars.length - 1] || null;
     }
 
-    async init() {
-      if (!configRead("enableSponsorBlock")) return;
+    function createMenuButton() {
+        const searchBar = getSearchBar();
+        if (!searchBar || searchBar.parentNode.querySelector('button[data-notubetv="menu"]')) return;
 
-      // ... resto igual (omitido por brevedad)
+        const menuButton = document.createElement("button");
+        menuButton.setAttribute("data-notubetv", "menu");
+        menuButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="56px" viewBox="0 -960 960 960" width="56px" fill="#FFFFFF" fill-opacity="0.8"><path d="M480-480q0-91 64.5-155.5T700-700q91 0 155.5 64.5T920-480H480ZM260-260q-91 0-155.5-64.5T40-480h440q0 91-64.5 155.5T260-260Zm220-220q-91 0-155.5-64.5T260-700q0-91 64.5-155.5T480-920v440Zm0 440v-440q91 0 155.5 64.5T700-260q0 91-64.5 155.5T480-40Z"/></svg>`;
+        
+        Object.assign(menuButton.style, {
+            marginLeft: "54px",
+            padding: "35px",
+            background: "rgba(255, 255, 255, 0.1)",
+            border: "none",
+            borderRadius: "88px"
+        });
+
+        const parent = searchBar.parentNode;
+        Object.assign(parent.style, {
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center"
+        });
+
+        parent.insertBefore(menuButton, searchBar.nextSibling);
+        return menuButton;
     }
 
-    scheduleSkip() {
-      clearTimeout(this.nextSkipTimeout);
-      this.nextSkipTimeout = null;
-
-      // --- FIX: esperar a que el video esté listo ---
-      if (!this.active || this.video.paused || this.video.readyState < 2)
-        return;
-
-      const current = this.video.currentTime;
-      const nextSegments = this.segments
-        .filter((seg) => seg.segment[0] >= current - 0.2)
-        .sort((a, b) => a.segment[0] - b.segment[0]);
-
-      if (!nextSegments.length) return;
-
-      const [segment] = nextSegments;
-      const [start, end] = segment.segment;
-
-      if (current >= end) return;
-
-      const delay = Math.max(0, (start - current) * 1000);
-
-      this.nextSkipTimeout = setTimeout(() => {
-        if (
-          this.video.paused ||
-          this.video.readyState < 2 || // <-- chequeo añadido
-          !this.skippableCategories.includes(segment.category)
-        )
-          return;
-
-        if (!this.manualSkippableCategories.includes(segment.category)) {
-          this.video.currentTime = end;
-          this.scheduleSkip();
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "ArrowRight") {
+            const searchBar = getSearchBar();
+            if (searchBar && searchBar.classList.contains("ytLrSearchTextBoxFocused")) {
+                modernUI();
+                const menuButton = document.querySelector('button[data-notubetv="menu"]');
+                if (menuButton) menuButton.style.background = "white";
+            }
         }
-      }, delay);
-    }
-  }
+    });
 
-  // resto del código igual...
+    // Observer simplificado
+    new MutationObserver(() => {
+        if (getSearchBar() && !document.querySelector('[data-notubetv="menu"]')) {
+            createMenuButton();
+        }
+    }).observe(document.body, { childList: true, subtree: true });
 })();
-/* End TizenTubeScripts.js */
+
+/* ExitBridge - Versión Ligera */
+(function() {
+    new MutationObserver((mutations, observer) => {
+        const exitButton = document.querySelector(".ytVirtualListItemLast ytlr-button.ytLrButtonLargeShape");
+        if (exitButton) {
+            exitButton.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && typeof ExitBridge !== "undefined" && ExitBridge.onExitCalled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ExitBridge.onExitCalled();
+                }
+            }, true);
+            observer.disconnect(); // Desconectar después de encontrar el botón
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* Configuración Principal - Versión Ligera */
+(function() {
+    "use strict";
+
+    const CONFIG_KEY = "ytaf-configuration";
+    const defaultConfig = {
+        enableAdBlock: true,
+        enableSponsorBlock: true,
+        enableSponsorBlockSponsor: true,
+        enableSponsorBlockIntro: true,
+        enableSponsorBlockOutro: true,
+        enableSponsorBlockInteraction: true,
+        enableSponsorBlockSelfPromo: true,
+        enableSponsorBlockMusicOfftopic: true,
+        enableShorts: true,
+    };
+
+    // Sistema de configuración optimizado
+    window.localConfig = (() => {
+        try {
+            return JSON.parse(window.localStorage[CONFIG_KEY] || JSON.stringify(defaultConfig));
+        } catch {
+            return {...defaultConfig};
+        }
+    })();
+
+    window.configRead = (key) => window.localConfig[key] ?? defaultConfig[key];
+    window.configWrite = (key, value) => {
+        window.localConfig[key] = value;
+        window.localStorage[CONFIG_KEY] = JSON.stringify(window.localConfig);
+    };
+
+    // Funciones de UI simplificadas
+    const showToast = (title, subtitle) => {
+        resolveCommand({
+            openPopupAction: {
+                popupType: "TOAST",
+                popup: { overlayToastRenderer: { title: { simpleText: title }, subtitle: { simpleText: subtitle } } }
+            }
+        });
+    };
+
+    // JSON.parse patch optimizado
+    const originalParse = JSON.parse;
+    JSON.parse = function(text) {
+        const result = originalParse.apply(this, arguments);
+        
+        if (configRead("enableAdBlock")) {
+            if (result.adPlacements) result.adPlacements = [];
+            if (result.playerAds) result.playerAds = false;
+            if (result.adSlots) result.adSlots = [];
+            
+            // Limpiar anuncios masthead
+            const masthead = result?.contents?.tvBrowseRenderer?.content?.tvSurfaceContentRenderer?.content?.sectionListRenderer?.contents?.[0];
+            if (masthead?.shelfRenderer?.content?.horizontalListRenderer?.items) {
+                masthead.shelfRenderer.content.horizontalListRenderer.items = 
+                    masthead.shelfRenderer.content.horizontalListRenderer.items.filter(i => !i?.adSlotRenderer);
+            }
+        }
+
+        if (!configRead("enableShorts")) {
+            const contents = result?.contents?.tvBrowseRenderer?.content?.tvSurfaceContentRenderer?.content?.sectionListRenderer?.contents;
+            if (contents) {
+                result.contents.tvBrowseRenderer.content.tvSurfaceContentRenderer.content.sectionListRenderer.contents =
+                    contents.filter(shelve => shelve.shelfRenderer?.tvhtml5ShelfRendererType !== "TVHTML5_SHELF_RENDERER_TYPE_SHORTS");
+            }
+        }
+
+        return result;
+    };
+
+    // SponsorBlock simplificado
+    class SponsorBlockHandler {
+        constructor(videoID) {
+            this.videoID = videoID;
+            this.active = true;
+        }
+
+        async init() {
+            if (!configRead("enableSponsorBlock")) return;
+
+            try {
+                const videoHash = await this.sha256(this.videoID).substring(0, 4);
+                const categories = ["sponsor", "intro", "outro", "interaction", "selfpromo", "music_offtopic"];
+                
+                const resp = await new Promise(resolve => {
+                    window.onNetworkBridgeResponse = resolve;
+                    NetworkBridge.fetch(
+                        `https://api.sponsor.ajay.app/api/skipSegments/${videoHash}?categories=${encodeURIComponent(JSON.stringify(categories))}`,
+                        this.videoID
+                    );
+                });
+
+                const result = JSON.parse(resp);
+                if (!result?.segments?.length) return;
+
+                this.segments = result.segments;
+                this.skippableCategories = this.getSkippableCategories();
+                this.attachVideo();
+            } catch (error) {
+                console.warn("SponsorBlock error:", error);
+            }
+        }
+
+        getSkippableCategories() {
+            const categories = [];
+            if (configRead("enableSponsorBlockSponsor")) categories.push("sponsor");
+            if (configRead("enableSponsorBlockIntro")) categories.push("intro");
+            if (configRead("enableSponsorBlockOutro")) categories.push("outro");
+            if (configRead("enableSponsorBlockInteraction")) categories.push("interaction");
+            if (configRead("enableSponsorBlockSelfPromo")) categories.push("selfpromo");
+            if (configRead("enableSponsorBlockMusicOfftopic")) categories.push("music_offtopic");
+            return categories;
+        }
+
+        attachVideo() {
+            this.video = document.querySelector("video");
+            if (!this.video) {
+                setTimeout(() => this.attachVideo(), 100);
+                return;
+            }
+
+            this.video.addEventListener("play", () => this.scheduleSkip());
+            this.video.addEventListener("durationchange", () => this.buildOverlay());
+        }
+
+        scheduleSkip() {
+            if (!this.active || !this.video || this.video.paused) return;
+
+            const current = this.video.currentTime;
+            const nextSegment = this.segments
+                .filter(seg => seg.segment[0] >= current - 0.2)
+                .sort((a, b) => a.segment[0] - b.segment[0])[0];
+
+            if (!nextSegment) return;
+
+            const [start, end] = nextSegment.segment;
+            if (current >= end) return;
+
+            setTimeout(() => {
+                if (this.video.paused || !this.skippableCategories.includes(nextSegment.category)) return;
+                showToast("SponsorBlock", `Skipping ${nextSegment.category}`);
+                this.video.currentTime = end;
+                this.scheduleSkip();
+            }, Math.max(0, (start - current) * 1000));
+        }
+
+        async sha256(ascii) {
+            // Implementación SHA256 simplificada
+            const buffer = new TextEncoder().encode(ascii);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        destroy() {
+            this.active = false;
+            this.segments = null;
+            if (this.video) {
+                this.video.removeEventListener("play", this.scheduleSkip);
+                this.video.removeEventListener("durationchange", this.buildOverlay);
+            }
+        }
+    }
+
+    // Gestión de SponsorBlock global
+    window.sponsorblock = null;
+    window.addEventListener("hashchange", () => {
+        const match = location.hash.match(/[?&]v=([^&]+)/);
+        const videoID = match ? match[1] : null;
+        
+        if (!videoID || !configRead("enableSponsorBlock")) {
+            if (window.sponsorblock) window.sponsorblock.destroy();
+            return;
+        }
+
+        if (!window.sponsorblock || window.sponsorblock.videoID !== videoID) {
+            if (window.sponsorblock) window.sponsorblock.destroy();
+            window.sponsorblock = new SponsorBlockHandler(videoID);
+            window.sponsorblock.init();
+        }
+    });
+
+    // Inicialización optimizada
+    const init = () => {
+        const videoElement = document.querySelector("video");
+        if (videoElement) {
+            // Inyectar CSS mínimo
+            const style = document.createElement("style");
+            style.textContent = `
+                .ytaf-ui-container { 
+                    position: absolute; top: 10%; left: 10%; right: 10%; bottom: 10%;
+                    background: rgba(0, 0, 0, 0.8); color: white; border-radius: 20px;
+                    padding: 20px; font-size: 1.5rem; z-index: 1000; 
+                }
+                .ytLrWatchDefaultShadow {
+                    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.8) 90%) !important;
+                    background-color: rgba(0, 0, 0, 0.3) !important;
+                }
+            `;
+            document.head.appendChild(style);
+            clearInterval(initInterval);
+        }
+    };
+
+    const initInterval = setInterval(init, 250);
+})();
