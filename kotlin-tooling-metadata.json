@@ -1,18 +1,18 @@
 /* Start spoofViewport.js */
-// Enables 4K resolution tricking youtube into thinking that we are on a 4K TV
+// Enables 720 resolution tricking youtube into thinking that we are on a 720 TV
 (function () {
-  //if (window.screen.width >= 3840 || window.screen.height >= 2160) return;
+  //if (window.screen.width >= 720 || window.screen.height >= 720) return;
 
   var existing = document.querySelector('meta[name="viewport"]');
   if (existing) {
     existing.setAttribute(
       "content",
-      "width=3840, height=2160, initial-scale=1.0"
+      "width=720, height=720, initial-scale=1.0"
     );
   } else {
     var meta = document.createElement("meta");
     meta.name = "viewport";
-    meta.content = "width=3840, height=2160, initial-scale=1.0";
+    meta.content = "width=720, height=720, initial-scale=1.0";
     document.head.appendChild(meta);
   }
 })();
@@ -131,16 +131,7 @@
 
   const CONFIG_KEY = "ytaf-configuration";
   const defaultConfig = {
-    enableAdBlock: true,
-    enableSponsorBlock: true,
-    sponsorBlockManualSkips: [],
-    enableSponsorBlockSponsor: true,
-    enableSponsorBlockIntro: true,
-    enableSponsorBlockOutro: true,
-    enableSponsorBlockInteraction: true,
-    enableSponsorBlockSelfPromo: true,
-    enableSponsorBlockMusicOfftopic: true,
-    enableShorts: true,
+    enableAdBlock: true,,
   };
 
   let localConfig;
@@ -307,35 +298,6 @@
         value: "enableSponsorBlock",
       },
       {
-        name: "Skip Sponsor Segments",
-        icon: "MONEY_HEART",
-        value: "enableSponsorBlockSponsor",
-      },
-      {
-        name: "Skip Intro Segments",
-        icon: "PLAY_CIRCLE",
-        value: "enableSponsorBlockIntro",
-      },
-      {
-        name: "Skip Outro Segments",
-        value: "enableSponsorBlockOutro",
-      },
-      {
-        name: "Skip Interaction Reminder Segments",
-        value: "enableSponsorBlockInteraction",
-      },
-      {
-        name: "Skip Self-Promotion Segments",
-        value: "enableSponsorBlockSelfPromo",
-      },
-      {
-        name: "Skip Off-Topic Music Segments",
-        value: "enableSponsorBlockMusicOfftopic",
-      },
-      {
-        name: "Shorts",
-        icon: "YOUTUBE_SHORTS_FILL_24",
-        value: "enableShorts",
       },
     ];
 
